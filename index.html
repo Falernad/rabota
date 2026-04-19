@@ -157,7 +157,9 @@
             return this;
         };
 
-        canvas.width = wind        
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        
         const RECIPE = ['meat', 'cheese', 'salad', 'tomato', 'top-bun'];
         const RECIPE_NAMES = {
             'meat': 'котлету 🥩',
@@ -182,6 +184,7 @@
         let items = [];
         let mouseX = canvas.width / 2;
         let currentStep = 0;
+        let spawnInterval = null;
         
         const player = {
             x: canvas.width / 2 - 70,
@@ -193,7 +196,6 @@
             squash: 1
         };
 
-        // Генерация фиксированных позиций кунжута
         function generateSesamePositions(radius, count = 18) {
             const positions = [];
             for (let i = 0; i < count; i++) {
@@ -278,8 +280,6 @@
         function completeBurger() {
             burgersCompleted++;
             burgerCountDisplay.textContent = burgersCompleted;
-            
-            // Восстанавливаем одну жизнь (но не больше 3)
             lives = Math.min(3, lives + 1);
             updateLivesDisplay();
             
@@ -299,18 +299,21 @@
                 gameOver = true;
                 showRestart();
                 progressText.textContent = 'Игра окончена';
+                clearInterval(spawnInterval);
+                spawnInterval = null;
             }
         }
 
-        function spawnItem() {
-            if (gameOver) return;
-            
-            const types = ['meat', 'cheese', 'salad', 'tomato', 'top-bun'];
-            const type = types[Math.floor(Math.random() * types.length)];
-            items.push(new Ingredient(type));
-            
-            let delay = Math.max(400, 1000 - (burgersCompleted * 30));
-            setTimeout(spawnItem, delay);
+        function startSpawning() {
+            if (spawnInterval) clearInterval(spawnInterval);
+            spawnInterval = setInterval(() => {
+                if (gameOver) return;
+                if (items.length < 5) {
+                    const types = ['meat', 'cheese', 'salad', 'tomato', 'top-bun'];
+                    const type = types[Math.floor(Math.random() * types.length)];
+                    items.push(new Ingredient(type));
+                }
+            }, Math.max(400, 1000 - burgersCompleted * 30));
         }
 
         function update() {
@@ -321,7 +324,6 @@
             player.tilt = diff * 0.001;
             player.squash += (1 - player.squash) * 0.1;
 
-            // Точная высота стопки с учётом реальных высот слоёв
             const stackHeight = player.stack.reduce((sum, layer) => sum + layer.h, 0);
             const stackTopY = player.y - stackHeight;
 
@@ -329,9 +331,8 @@
                 const item = items[i];
                 item.y += item.speed;
                 
-                // Проверка столкновения: предмет должен пересекаться по вертикали с верхней границей стопки
                 const itemBottom = item.y + item.h;
-                const verticalOverlap = (itemBottom >= stackTopY && item.y <= stackTopY + 5); // допуск 5px
+                const verticalOverlap = (itemBottom >= stackTopY && item.y <= stackTopY + 5);
                 
                 if (verticalOverlap && 
                     item.x < player.x + player.w && 
@@ -385,7 +386,8 @@
             restartBtn.classList.remove('show');
             messageDiv.style.display = 'none';
             
-            spawnItem();
+            if (spawnInterval) clearInterval(spawnInterval);
+            startSpawning();
         }
 
         function draw() {
@@ -430,7 +432,7 @@
                 ctx.beginPath();
                 if (layer.type === 'top-bun') {
                     const centerX = player.x + player.w/2;
-                    const centerY = currentStackY + layer.h/2; // центр полукруга
+                    const centerY = currentStackY + layer.h/2;
                     ctx.arc(centerX, centerY, player.w/2, 0, Math.PI, true);
                     ctx.fill();
                     
@@ -493,11 +495,9 @@
 
         updateLivesDisplay();
         updateProgressDisplay();
-        spawnItem();
+        startSpawning();
         frame();
-    })();ow.innerWidth;
-        canvas.height = window.innerHeight;
-
+    })();
 </script>
 </body>
 </html>
